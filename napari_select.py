@@ -21,6 +21,10 @@ from skimage import io as skio
 import os
 import argparse
 
+# Slider functionality test
+from qtpy.QtWidgets import QSlider
+from PyQt5.QtCore import Qt
+
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  
 
@@ -44,7 +48,8 @@ if __name__ == "__main__":
     # Ensure the output directory exists
     os.makedirs(output_path, exist_ok=True)
 
-    data, header = nrrd.read(image_path)  # Load the image dynamically
+    image, header = nrrd.read(image_path)  # Load the image dynamically
+
 
 #TODO: Delete the following lines because they are loaded from command line now. 
 # Load the NRRD file
@@ -97,8 +102,8 @@ try:
             image[~tissue_mask] = background_value
         
         print("成功应用tissue boundary mask")
-    else:
-        print("警告: largest_contour_mask.png 文件不存在")
+    #else:
+    #    print("警告: largest_contour_mask.png 文件不存在")
 except Exception as e:
     print(f"应用tissue boundary mask时发生错误: {e}")
     print("继续执行程序，但不应用mask")
@@ -119,7 +124,129 @@ viewer = napari.Viewer()
 
 # Get initial tile
 tile, (x_offset, y_offset) = get_random_tile(image, TILE_SIZE)
-tile_layer = viewer.add_image(tile, name="Current Tile")
+#tile_layer = viewer.add_image(tile, name="Current Tile")
+
+# --RN TEST--
+#control_widget = QWidget()
+#layout = QVBoxLayout()
+#control_widget.setLayout(layout)
+
+#def add_threshold_slider(channel_layer, channel_idx):
+#    min_slider = QSlider(Qt.Horizontal)
+#    max_slider = QSlider(Qt.Horizontal)
+#    min_slider.setRange(0, 255)
+#    max_slider.setRange(0, 255)
+
+#    min_slider.setValue(0)
+#    max_slider.setValue(255)
+
+#    def apply_threshold(value):
+#        min_val = min_slider.value()
+#        max_val = max_slider.value()
+#        channel_layer.data = np.clip(channel_layer.data, min_val, max_val)
+#        channel_layer.refresh()
+
+#    min_slider.valueChanged.connect(apply_threshold)
+#    max_slider.valueChanged.connect(apply_threshold)
+
+#    layout.addWidget(min_slider)
+#    layout.addWidget(max_slider)
+
+# Separate the channels and add them as individual layers
+#num_channels = tile.shape[2]  # Assuming the last dimension is channels
+#colormaps = ['red', 'blue', 'green', 'yellow', 'gray']
+#for i in range(num_channels):
+#    channel = tile[:, :, i]  # Extract individual channel
+#    channel_layer = viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])  # Add each channel as a separate layer
+#    add_threshold_slider(channel_layer, i)
+
+from qtpy.QtWidgets import QLineEdit, QLabel, QVBoxLayout, QWidget, QSlider
+import numpy as np
+
+control_widget = QWidget()
+layout = QVBoxLayout()
+control_widget.setLayout(layout)
+
+def add_threshold_slider(channel_layer, channel_idx, min_data, max_data):
+    # Create sliders
+    min_slider = QSlider(Qt.Horizontal)
+    max_slider = QSlider(Qt.Horizontal)
+
+    min_slider.setRange(int(min_data), int(max_data))  # Set range based on the data min/max values
+    max_slider.setRange(int(min_data), int(max_data))
+
+    min_slider.setValue(int(min_data))
+    max_slider.setValue(int(max_data))
+
+    # Create manual input fields for entering min/max values
+    min_input = QLineEdit()
+    max_input = QLineEdit()
+    min_input.setText(str(int(min_data)))
+    max_input.setText(str(int(max_data)))
+
+    # Apply threshold and update manually
+    def apply_threshold(value):
+        min_val = min_slider.value()
+        max_val = max_slider.value()
+        channel_layer.data = np.clip(channel_layer.data, min_val, max_val)
+        channel_layer.refresh()
+
+    def apply_manual_input():
+        try:
+            # Get the values from the text inputs
+            min_val = float(min_input.text())
+            max_val = float(max_input.text())
+
+            # Set the slider values based on the inputs
+            min_slider.setValue(int(min_val))
+            max_slider.setValue(int(max_val))
+
+            # Apply the thresholds to the layer
+            channel_layer.data = np.clip(channel_layer.data, min_val, max_val)
+            channel_layer.refresh()
+        except ValueError:
+            pass  # Ignore invalid input if it’s not a number
+
+    # When sliders change, update the manual input fields
+    def update_input_from_slider():
+        min_input.setText(str(min_slider.value()))
+        max_input.setText(str(max_slider.value()))
+
+    min_slider.valueChanged.connect(apply_threshold)
+    max_slider.valueChanged.connect(apply_threshold)
+
+    # When inputs change, update the sliders
+    min_input.textChanged.connect(apply_manual_input)
+    max_input.textChanged.connect(apply_manual_input)
+
+    # When slider values change, update the inputs
+    min_slider.valueChanged.connect(update_input_from_slider)
+    max_slider.valueChanged.connect(update_input_from_slider)
+
+    # Add widgets to the layout
+    layout.addWidget(QLabel(f"Channel {channel_idx + 1} Min Threshold:"))
+    layout.addWidget(min_slider)
+    layout.addWidget(min_input)
+
+    layout.addWidget(QLabel(f"Channel {channel_idx + 1} Max Threshold:"))
+    layout.addWidget(max_slider)
+    layout.addWidget(max_input)
+
+# Separate the channels and add them as individual layers
+num_channels = tile.shape[2]  # Assuming the last dimension is channels
+colormaps = ['red', 'blue', 'green', 'yellow', 'gray']
+
+# Add the empty tile_layer
+tile_layer = viewer.add_image(np.zeros_like(tile), name="tile_layer", opacity=0)
+
+for i in range(num_channels):
+    channel = tile[:, :, i]  # Extract individual channel
+    channel_layer = viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])  # Add each channel as a separate layer
+    min_data, max_data = channel.min(), channel.max()
+    add_threshold_slider(channel_layer, i, min_data, max_data)
+
+
+# --RN TEST--
 
 # Add a Labels layer for contour annotation
 labels_layer = viewer.add_labels(
@@ -479,9 +606,9 @@ def view_current_annotations():
         viewer.add_image(temp_view, name="Current Annotations Debug", colormap='yellow')
 
 # Create custom button widgets
-control_widget = QWidget()
-layout = QVBoxLayout()
-control_widget.setLayout(layout)
+#control_widget = QWidget()
+#layout = QVBoxLayout()
+#control_widget.setLayout(layout)
 
 # Next image button
 next_button = QPushButton("Next Image")
