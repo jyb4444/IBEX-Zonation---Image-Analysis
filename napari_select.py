@@ -1,3 +1,5 @@
+#TODO: Ensure that all comments/outputs are in english
+
 import napari
 import numpy as np
 import json
@@ -17,13 +19,37 @@ import torch.nn.functional as F
 from qtpy.QtWidgets import QPushButton, QVBoxLayout, QWidget
 from skimage import io as skio  
 import os
+import argparse
 
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  
 
+# Definitions to be able to specificy image path (e.g. python napari_select.py -i path/to/image.nrrd)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Load an NRRD image into Napari.")
+    parser.add_argument("-i", "--image", required=True, help="Path to the NRRD image file.")
+    parser.add_argument("-o", "--output", type=str, required=True, help="Output directory to save files")
+    parser.add_argument("-m", "--mask", type=str, help="Path to the contour mask file (optional)")
+    parser.add_argument("-s", "--size", type=int, default=6000, help="Size of the tile (default: 6000)")  # Add the size argument
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+    image_path = args.image  # Use this instead of a hardcoded path
+    output_path = args.output
+    if args.mask:
+        mask_path = args.mask
+    TILE_SIZE = args.size
+
+    # Ensure the output directory exists
+    os.makedirs(output_path, exist_ok=True)
+
+    data, header = nrrd.read(image_path)  # Load the image dynamically
+
+#TODO: Delete the following lines because they are loaded from command line now. 
 # Load the NRRD file
-filename = "./PORTAL_CENTRAL_FULL_SECTION_20250131.nrrd"
-image, header = nrrd.read(filename)
+# filename = "./PORTAL_CENTRAL_FULL_SECTION_20250131.nrrd"
+# image, header = nrrd.read(filename)
 
 # Convert image to native byte order
 image = image.astype(np.float32, copy=True)  # This ensures native byte order
@@ -34,20 +60,24 @@ image = image.astype(np.float32, copy=True)  # This ensures native byte order
 try:
     # 解除skimage的图像大小限制
     os.environ['SKIMAGE_ALLOW_HUGE_IMAGES'] = '1'
-    
-    # 检查文件是否存在
-    if os.path.exists("largest_contour_mask.png"):
-        tissue_mask = skio.imread("largest_contour_mask.png")
-        # 确保mask是二值的
-        if len(tissue_mask.shape) > 2:  # 如果是RGB图像
-            tissue_mask = tissue_mask[:, :, 0] > 0  # 只取一个通道并转为二值
+
+
+    # Check if the mask file exists before loading
+    if os.path.exists(mask_path):
+        tissue_mask = skio.imread(mask_path)
+        # Ensure mask is binary
+        if len(tissue_mask.shape) > 2:  # If it's an RGB image
+            tissue_mask = tissue_mask[:, :, 0] > 0  # Take one channel and binarize
         else:
             tissue_mask = tissue_mask > 0
+    else:
+        print(f"Warning: Mask file {mask_path} not found.")
+        tissue_mask = None  # Handle cases where the mask isn't provided
         
-        # 确保mask与图像尺寸匹配
+        # Ensure the mask matches the image dimensions.
         if tissue_mask.shape[:2] != image.shape[:2]:
-            print(f"警告: Mask尺寸 {tissue_mask.shape[:2]} 与图像尺寸 {image.shape[:2]} 不匹配")
-            # 如果尺寸不匹配，可以考虑调整mask的大小
+            print(f"Warning: Mask size {tissue_mask.shape[:2]} does not match the image size {image.shape[:2]}")
+            # If the dimensions don't match, consider resizing the mask.
             from skimage.transform import resize
             tissue_mask = resize(tissue_mask, image.shape[:2], order=0, preserve_range=True).astype(bool)
             print(f"已调整mask尺寸为 {tissue_mask.shape}")
@@ -73,8 +103,9 @@ except Exception as e:
     print(f"应用tissue boundary mask时发生错误: {e}")
     print("继续执行程序，但不应用mask")
 
+#TODO: Remove since this is now passed as variable
 # Define tile size
-TILE_SIZE = 6000
+#TILE_SIZE = 6000
 
 # Function to get a random tile
 def get_random_tile(image, tile_size):
@@ -214,7 +245,7 @@ def save_current_annotations():
     # If there are contour annotations
     if has_labels:
         # Save label data to a file
-        mask_filename = f"mask_{len(annotations)}.npy"
+        mask_filename = os.path.join(output_path, f"mask_{len(annotations)}.npy")
         np.save(mask_filename, labels_data)
         
         # 检查保存是否成功
@@ -241,10 +272,10 @@ def save_current_annotations():
         annotations.append(current_annotation)
         print(f"Saved current tile annotation with contours")
         
-        # Update the annotations.json file
-        with open("annotations.json", "w") as f:
+        annotations_path = os.path.join(args.output, "annotations.json")
+        with open(annotations_path, "w") as f:
             json.dump(annotations, f)
-        print(f"All annotations saved to annotations.json, total: {len(annotations)} images")
+        print(f"All annotations saved to {annotations_path}, total: {len(annotations)} images")
     else:
         print("No annotations found to save")
 
