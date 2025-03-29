@@ -4,6 +4,7 @@ from skimage import io as skio
 from skimage.transform import resize
 import random
 import torch
+
 try:
     import nrrd
 except ImportError:
@@ -17,42 +18,58 @@ except ImportError:
 def load_image(image_path, mask_path=None):
     """Loads an NRRD image and an optional mask image."""
     try:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+
         image, _ = nrrd.read(image_path)
         image = image.astype(np.float32, copy=True)
+        print(f"Successfully loaded image: {image_path}, shape: {image.shape}")
 
         tissue_mask = None
-        if mask_path and os.path.exists(mask_path):
-            os.environ['SKIMAGE_ALLOW_HUGE_IMAGES'] = '1'
-            tissue_mask = skio.imread(mask_path)
-            if len(tissue_mask.shape) > 2:
-                tissue_mask = tissue_mask[:, :, 0] > 0
+        if mask_path:
+            if not os.path.exists(mask_path):
+                print(f"Warning: Mask file not found: {mask_path}")
             else:
-                tissue_mask = tissue_mask > 0
+                os.environ['SKIMAGE_ALLOW_HUGE_IMAGES'] = '1'
+                tissue_mask = skio.imread(mask_path)
+                print(f"Successfully loaded mask: {mask_path}, shape: {tissue_mask.shape}")
 
-            if tissue_mask.shape[:2] != image.shape[:2]:
-                print(f"Warning: Mask size {tissue_mask.shape[:2]} does not match image size {image.shape[:2]}. Resizing mask.")
-                tissue_mask = resize(tissue_mask, image.shape[:2], order=0, preserve_range=True).astype(bool)
+                if len(tissue_mask.shape) > 2:
+                    tissue_mask = tissue_mask[:, :, 0] > 0
+                else:
+                    tissue_mask = tissue_mask > 0
 
-            if len(image.shape) == 3:
-                for i in range(image.shape[2]):
-                    background_value = np.min(image[:, :, i])
-                    temp = image[:, :, i].copy()
-                    temp[~tissue_mask] = background_value
-                    image[:, :, i] = temp
-            else:
-                background_value = np.min(image)
-                image[~tissue_mask] = background_value
+                if tissue_mask.shape[:2] != image.shape[:2]:
+                    print(f"Warning: Mask size {tissue_mask.shape[:2]} does not match image size {image.shape[:2]}. Resizing mask.")
+                    tissue_mask = resize(tissue_mask, image.shape[:2], order=0, preserve_range=True).astype(bool)
 
-            print("Successfully applied tissue boundary mask")
+                if len(image.shape) == 3:
+                    for i in range(image.shape[2]):
+                        background_value = np.min(image[:, :, i])
+                        temp = image[:, :, i].copy()
+                        temp[~tissue_mask] = background_value
+                        image[:, :, i] = temp
+                else:
+                    background_value = np.min(image)
+                    image[~tissue_mask] = background_value
+
+                print("Successfully applied tissue boundary mask")
 
         return image, tissue_mask
 
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return None, None
     except Exception as e:
         print(f"Error loading image or mask: {e}")
         return None, None
 
 def get_random_tile(image, tile_size):
     """Extracts a random tile from the image."""
+    if image is None:
+        print("Error: Image is None. Cannot extract tile.")
+        return None, (0,0)
+
     max_x, max_y, _ = image.shape
     x = random.randint(0, max_x - tile_size)
     y = random.randint(0, max_y - tile_size)

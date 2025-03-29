@@ -27,6 +27,11 @@ def main():
     # Load image and mask
     image, tissue_mask = image_processing.load_image(args.image, args.mask)
 
+    # Check if image was loaded successfully
+    if image is None:
+        print("Error: Could not load image. Exiting.")
+        return  # Exit the function if image loading failed
+
     # Get initial tile
     tile, (x_offset, y_offset) = image_processing.get_random_tile(image, args.size)
 
