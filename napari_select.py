@@ -17,6 +17,7 @@ import torch.nn.functional as F
 from qtpy.QtWidgets import QPushButton, QVBoxLayout, QWidget
 from skimage import io as skio  
 import os
+from napari.utils.colormaps import DirectLabelColormap
 
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  
@@ -36,8 +37,8 @@ try:
     os.environ['SKIMAGE_ALLOW_HUGE_IMAGES'] = '1'
     
     # 检查文件是否存在
-    if os.path.exists("largest_contour_mask.png"):
-        tissue_mask = skio.imread("largest_contour_mask.png")
+    if os.path.exists("./image/largest_contour_mask.png"):
+        tissue_mask = skio.imread("./image/largest_contour_mask.png")
         # 确保mask是二值的
         if len(tissue_mask.shape) > 2:  # 如果是RGB图像
             tissue_mask = tissue_mask[:, :, 0] > 0  # 只取一个通道并转为二值
@@ -104,8 +105,6 @@ labels_layer.opacity = 0.8          # 设置不透明度为80%
 # 设置标签层的颜色 - 修复颜色映射问题
 labels_layer.brush_size = 10  # 调整默认画笔大小
 
-# 直接设置颜色而不是使用colormap
-from napari.utils.colormaps import DirectLabelColormap
 # 创建一个从1开始的颜色映射，其中1对应亮黄色
 colors = {1: [255, 0, 255, 255]}  # 亮黄色，带有完全不透明的alpha通道
 labels_layer.color = colors
@@ -214,7 +213,7 @@ def save_current_annotations():
     # If there are contour annotations
     if has_labels:
         # Save label data to a file
-        mask_filename = f"mask_{len(annotations)}.npy"
+        mask_filename = f"./image/mask_{len(annotations)}.npy"
         np.save(mask_filename, labels_data)
         
         # 检查保存是否成功
