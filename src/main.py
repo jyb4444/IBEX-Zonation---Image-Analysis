@@ -2,6 +2,11 @@ import argparse
 import os
 import napari
 import torch
+import sys
+
+# Add the project root to sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 
 from src import image_processing, napari_ui, model_training, annotation_manager
 
