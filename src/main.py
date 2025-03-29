@@ -21,6 +21,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    global current_annotation
 
     # Ensure output directory exists
     os.makedirs(args.output, exist_ok=True)

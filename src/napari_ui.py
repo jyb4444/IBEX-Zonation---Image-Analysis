@@ -98,6 +98,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
     """Connects UI events to their corresponding functions."""
 
     def load_next_image():
+        print('d')
         global current_annotation
         # Remove all layers
         viewer.layers.clear()
@@ -126,25 +127,31 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
         print(f"Loaded new tile, position: ({x_offset}, {y_offset})")
 
         # Reset current annotation
+        print('e')
         current_annotation = {
             "tile_position": (int(x_offset), int(y_offset)),
             "tile_size": tile_size,
             "has_label_mask": False,
             "timestamp": str(np.datetime64('now'))
         }
+        print(f"other current_annotation:{current_annotation}")
 
+        print('f')
         # Recreate threshold sliders
-        control_widget = viewer.window.dock_widgets['Controls'].widget
+        control_widget = viewer.window._dock_widgets['Controls'].widget()
         layout = control_widget.layout()
         for i, layer in enumerate(viewer.layers):
             if layer.name.startswith("Channel"):
                 create_threshold_sliders(layout, layer, i)
 
     def save_current_annotations():
-        global current_annotation
+        print('a')
+        #global current_annotation
+        nonlocal current_annotation
         labels_data = labels_layer.data
         has_labels = np.any(labels_data > 0)
 
+        print('b')
         if current_annotation is None:
             current_annotation = {
                 "tile_position": (int(x_offset), int(y_offset)),
@@ -152,6 +159,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
                 "has_label_mask": False,
                 "timestamp": str(np.datetime64('now'))
             }
+        print('c')
 
         if has_labels:
             annotation_metadata = annotation_manager.save_mask(labels_data, current_annotation["tile_position"], tile_size)
@@ -214,7 +222,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
     train_button.clicked.connect(lambda: train_model_func(annotation_manager.annotations, image, viewer))
 
     # Add buttons to layout
-    control_widget = viewer.window._dock_widgets['Controls'].widget
+    control_widget = viewer.window._dock_widgets['Controls'].widget()
     layout = control_widget.layout()
     layout.addWidget(next_button)
     layout.addWidget(save_button)
