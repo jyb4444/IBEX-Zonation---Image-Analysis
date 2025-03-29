@@ -24,6 +24,9 @@ def main():
     # Ensure output directory exists
     os.makedirs(args.output, exist_ok=True)
 
+    # Initialize AnnotationManager FIRST
+    annotation_manager = annotation_manager.AnnotationManager(args.output)
+
     # Load image and mask
     image, tissue_mask = image_processing.load_image(args.image, args.mask)
 
@@ -38,8 +41,6 @@ def main():
     # Setup Napari viewer and UI
     viewer, tile_layer, labels_layer, control_widget = napari_ui.setup_napari_viewer(tile)
 
-    # Initialize AnnotationManager
-    annotation_manager = annotation_manager.AnnotationManager(args.output)
     current_annotation = {
         "tile_position": (int(x_offset), int(y_offset)),
         "tile_size": args.size,
