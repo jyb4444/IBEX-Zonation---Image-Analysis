@@ -209,7 +209,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
     train_button.clicked.connect(lambda: train_model_func(annotation_manager.annotations, image, viewer))
 
     # Add buttons to layout
-    control_widget = viewer.window.dock_widgets['Controls'].qt_widget
+    control_widget = viewer.window._dock_widgets['Controls'].qt_widget
     layout = control_widget.layout()
     layout.addWidget(next_button)
     layout.addWidget(save_button)
