@@ -64,11 +64,6 @@ def main():
         model_training.apply_model_to_image
     )
 
-    # Add control widget to napari
-    print("Adding control widget...")
-    viewer.window.add_dock_widget(control_widget, area="right", name="Controls")
-    print("Control widget added.")
-
     # Display usage instructions
     print("""
     Annotation Instructions:

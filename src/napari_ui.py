@@ -36,6 +36,11 @@ def setup_napari_viewer(tile):
     layout = QVBoxLayout()
     control_widget.setLayout(layout)
 
+    # Add control widget to napari
+    print("Adding control widget...")
+    viewer.window.add_dock_widget(control_widget, area="right", name="Controls")
+    print("Control widget added.")
+
     return viewer, tile_layer, labels_layer, control_widget
 
 def create_threshold_sliders(layout, channel_layer, channel_idx):
