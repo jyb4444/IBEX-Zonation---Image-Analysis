@@ -3,6 +3,7 @@ import os
 import napari
 import torch
 import sys
+import numpy as np
 
 # Add the project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
