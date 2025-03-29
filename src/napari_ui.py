@@ -134,7 +134,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
         }
 
         # Recreate threshold sliders
-        control_widget = viewer.window.dock_widgets['Controls'].qt_widget
+        control_widget = viewer.window.dock_widgets['Controls'].widget
         layout = control_widget.layout()
         for i, layer in enumerate(viewer.layers):
             if layer.name.startswith("Channel"):
