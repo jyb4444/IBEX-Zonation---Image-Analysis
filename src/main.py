@@ -8,7 +8,7 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-from src import image_processing, napari_ui, model_training, annotation_manager
+from src import image_processing, napari_ui, model_training, annotation_manager #original import
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Napari Annotation and Model Training.")
@@ -25,7 +25,7 @@ def main():
     os.makedirs(args.output, exist_ok=True)
 
     # Initialize AnnotationManager FIRST
-    annotation_manager = annotation_manager.AnnotationManager(args.output)
+    annotation_manager_instance = annotation_manager.AnnotationManager(args.output) #Correct way to create the instance.
 
     # Load image and mask
     image, tissue_mask = image_processing.load_image(args.image, args.mask)
@@ -55,7 +55,7 @@ def main():
         labels_layer,
         image,
         args.size,
-        annotation_manager,
+        annotation_manager_instance, # send the instance, not the module.
         current_annotation,
         model_training.train_model,
         image_processing.get_random_tile,
