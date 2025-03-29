@@ -61,7 +61,7 @@ def main():
         model_training.train_model,
         image_processing.get_random_tile,
         image_processing.debug_show_mask,
-        image_processing.apply_model_to_image
+        model_training.apply_model_to_image
     )
 
     # Add control widget to napari
