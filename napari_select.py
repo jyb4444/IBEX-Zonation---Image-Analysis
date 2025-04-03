@@ -50,12 +50,6 @@ if __name__ == "__main__":
 
     image, header = nrrd.read(image_path)  # Load the image dynamically
 
-
-#TODO: Delete the following lines because they are loaded from command line now. 
-# Load the NRRD file
-# filename = "./PORTAL_CENTRAL_FULL_SECTION_20250131.nrrd"
-# image, header = nrrd.read(filename)
-
 # Convert image to native byte order
 image = image.astype(np.float32, copy=True)  # This ensures native byte order
 # print(image.shape)
@@ -107,11 +101,7 @@ try:
 except Exception as e:
     print(f"应用tissue boundary mask时发生错误: {e}")
     print("继续执行程序，但不应用mask")
-
-#TODO: Remove since this is now passed as variable
-# Define tile size
-#TILE_SIZE = 6000
-
+    
 # Function to get a random tile
 def get_random_tile(image, tile_size):
     max_x, max_y, _ = image.shape

@@ -19,7 +19,7 @@ def restore_contours():
         print("Error: annotations.json file not found")
         return
     
-    nrrd_filename = "./PORTAL_CENTRAL_FULL_SECTION_20250131.nrrd"
+    nrrd_filename = "./image/PORTAL_CENTRAL_FULL_SECTION_20250131.nrrd"
     print(f"Loading original NRRD file: {nrrd_filename}")
     try:
         image, header = nrrd.read(nrrd_filename)
@@ -32,7 +32,7 @@ def restore_contours():
     global_mask = np.zeros(image.shape[:2], dtype=np.uint8)
     
     print("Loading annotations.json")
-    with open("annotations.json", "r") as f:
+    with open("./annotations.json", "r") as f:
         annotations = json.load(f)
     
     print(f"Found {len(annotations)} annotations")
