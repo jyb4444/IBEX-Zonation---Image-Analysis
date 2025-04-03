@@ -4,8 +4,13 @@ from qtpy.QtWidgets import QPushButton, QVBoxLayout, QWidget, QSlider, QLineEdit
 from PyQt5.QtCore import Qt
 from napari.utils.colormaps import DirectLabelColormap
 
-def setup_napari_viewer(tile):
-    """Sets up the Napari viewer with image and label layers."""
+def setup_napari_viewer(tile, prediction_tile=None):
+    """Sets up the Napari viewer with image, label layers, and optional prediction layer.
+    
+    Args:
+        tile: Image tile to display
+        prediction_tile: Optional prediction mask to display
+    """
     viewer = napari.Viewer()
 
     # Add empty tile layer
@@ -16,7 +21,8 @@ def setup_napari_viewer(tile):
     colormaps = ['red', 'blue', 'green', 'yellow', 'gray']
     for i in range(num_channels):
         channel = tile[:, :, i]
-        viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])
+        layer = viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])
+        layer.metadata['original_data'] = channel.copy()
 
     # Add labels layer for contour annotation
     labels_layer = viewer.add_labels(
@@ -28,8 +34,17 @@ def setup_napari_viewer(tile):
     labels_layer.blending = 'additive'
     labels_layer.opacity = 0.8
     labels_layer.brush_size = 10
-    colors = {1: [255, 0, 255, 255]}
-    labels_layer.color = colors
+    labels_layer.mode = 'paint'
+    labels_layer.selected_label = 1 
+    
+    # Add prediction layer if available
+    if prediction_tile is not None:
+        pred_layer = viewer.add_labels(
+            prediction_tile,
+            name='Model Prediction',
+            opacity=0.6
+        )
+        pred_layer.blending = 'additive'
 
     # Create control widgets
     control_widget = QWidget()
@@ -62,7 +77,9 @@ def create_threshold_sliders(layout, channel_layer, channel_idx):
     def apply_threshold(value):
         min_val = min_slider.value()
         max_val = max_slider.value()
-        channel_layer.data = np.clip(channel_layer.data, min_val, max_val)
+        original_data = channel_layer.metadata['original_data']
+        clipped_data = np.clip(original_data, min_val, max_val)
+        channel_layer.data = clipped_data
         channel_layer.refresh()
 
     def apply_manual_input():
@@ -71,7 +88,8 @@ def create_threshold_sliders(layout, channel_layer, channel_idx):
             max_val = float(max_input.text())
             min_slider.setValue(int(min_val))
             max_slider.setValue(int(max_val))
-            channel_layer.data = np.clip(channel_layer.data, min_val, max_val)
+            original_data = channel_layer.metadata['original_data']
+            channel_layer.data = np.clip(original_data, min_val, max_val)
             channel_layer.refresh()
         except ValueError:
             pass
@@ -98,13 +116,11 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
     """Connects UI events to their corresponding functions."""
 
     def load_next_image():
-        print('d')
-        global current_annotation
         # Remove all layers
         viewer.layers.clear()
 
         # Get a new random tile
-        tile, (x_offset, y_offset) = get_random_tile_func(image, tile_size)
+        tile, (x_offset, y_offset), prediction_tile = get_random_tile_func(image, tile_size)
 
         # Re-add layers
         tile_layer = viewer.add_image(tile, name="tile_layer", opacity=0)
@@ -112,7 +128,8 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
         colormaps = ['red', 'blue', 'green', 'yellow', 'gray']
         for i in range(num_channels):
             channel = tile[:, :, i]
-            viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])
+            layer = viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])
+            layer.metadata['original_data'] = channel.copy()
 
         labels_layer = viewer.add_labels(
             np.zeros(tile.shape[:2], dtype=np.uint32),
@@ -121,45 +138,71 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
         labels_layer.blending = 'additive'
         labels_layer.opacity = 0.8
         labels_layer.brush_size = 10
-        colors = {1: [255, 0, 255, 255]}
-        labels_layer.color = colors
+        
+        if prediction_tile is not None:
+            pred_layer = viewer.add_labels(
+                prediction_tile,
+                name='Model Prediction',
+                opacity=0.6
+            )
+            pred_layer.blending = 'additive'
 
         print(f"Loaded new tile, position: ({x_offset}, {y_offset})")
 
-        # Reset current annotation
-        print('e')
+        nonlocal current_annotation
         current_annotation = {
             "tile_position": (int(x_offset), int(y_offset)),
             "tile_size": tile_size,
             "has_label_mask": False,
             "timestamp": str(np.datetime64('now'))
         }
-        print(f"other current_annotation:{current_annotation}")
+        print(f"Current annotation: {current_annotation}")
 
-        print('f')
-        # Recreate threshold sliders
         control_widget = viewer.window._dock_widgets['Controls'].widget()
         layout = control_widget.layout()
+
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        
+        next_button = QPushButton("Next Image")
+        save_button = QPushButton("Save Current Annotation")
+        view_button = QPushButton("View Current Annotation")
+        refresh_button = QPushButton("Refresh Interface")
+        train_button = QPushButton("Train Model")
+        
+        next_button.clicked.connect(load_next_image)
+        save_button.clicked.connect(save_current_annotations)
+        view_button.clicked.connect(view_current_annotations)
+        refresh_button.clicked.connect(refresh_view)
+        train_button.clicked.connect(lambda: train_model_func(annotation_manager.annotations, image, viewer))
+        
+        layout.addWidget(next_button)
+        layout.addWidget(save_button)
+        layout.addWidget(view_button)
+        layout.addWidget(refresh_button)
+        layout.addWidget(train_button)
+        
         for i, layer in enumerate(viewer.layers):
             if layer.name.startswith("Channel"):
                 create_threshold_sliders(layout, layer, i)
 
     def save_current_annotations():
-        print('a')
-        #global current_annotation
         nonlocal current_annotation
         labels_data = labels_layer.data
         has_labels = np.any(labels_data > 0)
 
-        print('b')
         if current_annotation is None:
+            print("Warning: current_annotation is None, creating new one")
+            x_offset, y_offset = 0, 0
             current_annotation = {
                 "tile_position": (int(x_offset), int(y_offset)),
                 "tile_size": tile_size,
                 "has_label_mask": False,
                 "timestamp": str(np.datetime64('now'))
             }
-        print('c')
 
         if has_labels:
             annotation_metadata = annotation_manager.save_mask(labels_data, current_annotation["tile_position"], tile_size)
@@ -172,6 +215,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
                 print("Warning: Mask file was not created successfully!")
         else:
             print("No annotations found to save")
+            print(f"Unique label values: {np.unique(labels_data)}")
 
     def view_current_annotations():
         labels_data = labels_layer.data
@@ -206,22 +250,22 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
         labels_layer.data = temp_labels
 
         print("Interface has been refreshed")
+    
+    def on_viewer_close():
+        annotation_manager.save_annotations()
 
-    # Create buttons
     next_button = QPushButton("Next Image")
     save_button = QPushButton("Save Current Annotation")
     view_button = QPushButton("View Current Annotation")
     refresh_button = QPushButton("Refresh Interface")
     train_button = QPushButton("Train Model")
 
-    # Connect buttons to functions
     next_button.clicked.connect(load_next_image)
     save_button.clicked.connect(save_current_annotations)
     view_button.clicked.connect(view_current_annotations)
     refresh_button.clicked.connect(refresh_view)
     train_button.clicked.connect(lambda: train_model_func(annotation_manager.annotations, image, viewer))
 
-    # Add buttons to layout
     control_widget = viewer.window._dock_widgets['Controls'].widget()
     layout = control_widget.layout()
     layout.addWidget(next_button)
@@ -230,7 +274,8 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
     layout.addWidget(refresh_button)
     layout.addWidget(train_button)
 
-    # Create threshold sliders for each channel
     for i, layer in enumerate(viewer.layers):
         if layer.name.startswith("Channel"):
             create_threshold_sliders(layout, layer, i)
+    
+    viewer.window._qt_window.closeEvent = lambda event: (on_viewer_close(), event.accept())
