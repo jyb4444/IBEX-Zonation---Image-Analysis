@@ -105,10 +105,10 @@ def create_threshold_sliders(layout, channel_layer, channel_idx):
     min_slider.valueChanged.connect(update_input_from_slider)
     max_slider.valueChanged.connect(update_input_from_slider)
 
-    layout.addWidget(QLabel(f"Channel {channel_idx + 1} Min Threshold:"))
+    layout.addWidget(QLabel(f"Channel {channel_idx} Min Threshold:"))
     layout.addWidget(min_slider)
     layout.addWidget(min_input)
-    layout.addWidget(QLabel(f"Channel {channel_idx + 1} Max Threshold:"))
+    layout.addWidget(QLabel(f"Channel {channel_idx} Max Threshold:"))
     layout.addWidget(max_slider)
     layout.addWidget(max_input)
 
@@ -125,7 +125,7 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
         # Re-add layers
         tile_layer = viewer.add_image(tile, name="tile_layer", opacity=0)
         num_channels = tile.shape[2]
-        colormaps = ['red', 'blue', 'green', 'yellow', 'gray']
+        colormaps = ['blue', 'red', 'green', 'yellow', 'gray']
         for i in range(num_channels):
             channel = tile[:, :, i]
             layer = viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])
@@ -191,6 +191,17 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
 
     def save_current_annotations():
         nonlocal current_annotation
+        viewer = napari.current_viewer() # 获取当前的 viewer
+        labels_layer = None
+        for layer in viewer.layers:
+            if layer.name == 'Contour Annotation':
+                labels_layer = layer
+                break
+        if labels_layer is None:
+            print("Error: Contour Annotation layer not found!")
+            return
+
+        labels_layer.refresh()
         labels_data = labels_layer.data
         has_labels = np.any(labels_data > 0)
 
@@ -218,6 +229,16 @@ def connect_events(viewer, tile_layer, labels_layer, image, tile_size, annotatio
             print(f"Unique label values: {np.unique(labels_data)}")
 
     def view_current_annotations():
+        labels_layer = None
+        for layer in viewer.layers:
+            if layer.name == 'Contour Annotation':
+                labels_layer = layer
+                break
+        
+        if labels_layer is None:
+            print("No annotation layer found!")
+            return
+                
         labels_data = labels_layer.data
         unique_values = np.unique(labels_data)
         labeled_pixels = np.sum(labels_data > 0)

@@ -15,7 +15,7 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None  
 
 def restore_contours():
-    if not os.path.exists("annotations.json"):
+    if not os.path.exists("./output/annotations.json"):
         print("Error: annotations.json file not found")
         return
     
@@ -32,7 +32,7 @@ def restore_contours():
     global_mask = np.zeros(image.shape[:2], dtype=np.uint8)
     
     print("Loading annotations.json")
-    with open("./annotations.json", "r") as f:
+    with open("./output/annotations.json", "r") as f:
         annotations = json.load(f)
     
     print(f"Found {len(annotations)} annotations")
@@ -94,18 +94,6 @@ def restore_contours():
         print("Restored contours saved to 'restored_contours.png'")
     except Exception as e:
         print(f"Error saving global mask as image: {e}")
-    
-    viewer = napari.Viewer()
-    
-    if len(image.shape) == 3:
-        viewer.add_image(image, name="Original Image")
-    else:
-        viewer.add_image(image, name="Original Image")
-    
-    viewer.add_labels(global_mask, name="Restored Contours")
-    
-    print("Displaying results in napari. Close the viewer window when done.")
-    napari.run()
 
 if __name__ == "__main__":
     restore_contours()

@@ -6,12 +6,37 @@ import sys
 import numpy as np
 import skimage.io as skio
 from skimage.transform import resize
+from qtpy.QtWidgets import QPushButton, QVBoxLayout, QWidget, QSlider, QLineEdit, QLabel, QMessageBox
+from PyQt5.QtCore import Qt
 
 # Add the project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
 from src import image_processing, napari_ui, model_training, annotation_manager
+
+def show_instructions_dialog():
+    """Shows an instruction dialog with annotation guidelines."""
+    instructions = """
+    Annotation Instructions:
+    1. Use the paint polygon tool (polygon icon) in the left toolbar to draw contours on the "Contour Annotation" layer
+    2. After drawing contours on the current image, click "Save Current Annotation" button on the right panel
+    3. Click "Next Image" button to load a new image
+    4. "Train Model" button does not work now. 
+    5. Click "View Current Annotation" to check if your annotations are being captured
+
+    Note: 
+    - The annotation layer uses a bright magenta color for better visibility
+    - The prediction layer (if available) is shown in cyan
+    - You must click "Save Current Annotation" button after drawing to save your work
+    - If you don't see your annotations, try using the "View Current Annotation" button
+    """
+    
+    msg_box = QMessageBox()
+    msg_box.setWindowTitle("Annotation Instructions")
+    msg_box.setText(instructions)
+    msg_box.setIcon(QMessageBox.Information)
+    msg_box.exec_()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Napari Annotation and Model Training.")
@@ -62,6 +87,14 @@ def main():
         "timestamp": str(np.datetime64('now'))
     }
     
+    # Add help button to the control widget
+    help_button = QPushButton("Show Instructions")
+    help_button.clicked.connect(show_instructions_dialog)
+    
+    # Add the help button to the control layout
+    control_layout = control_widget.layout()
+    control_layout.addWidget(help_button)
+    
     # Connect UI events to functions
     napari_ui.connect_events(
         viewer,
@@ -77,21 +110,8 @@ def main():
         model_training.apply_model_to_image
     )
 
-    # Display usage instructions
-    print("""
-    Annotation Instructions:
-    1. Use the paint brush tool (brush icon) in the left toolbar to draw contours on the "Contour Annotation" layer
-    2. After drawing contours on the current image, click "Save Current Annotation" button on the right panel
-    3. Click "Next Image" button to load a new image
-    4. After annotating all images, click "Train Model" button to start model training
-    5. Click "View Current Annotation" to check if your annotations are being captured
-
-    Note: 
-    - The annotation layer uses a bright magenta color for better visibility
-    - The prediction layer (if available) is shown in cyan
-    - You must click "Save Current Annotation" button after drawing to save your work
-    - If you don't see your annotations, try using the "View Current Annotation" button
-    """)
+    # Show instructions dialog at startup
+    show_instructions_dialog()
 
     # Run the Napari application
     napari.run()
