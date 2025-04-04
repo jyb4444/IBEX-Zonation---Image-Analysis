@@ -2,7 +2,9 @@ import argparse
 import os
 import napari
 import torch
+import random
 import sys
+import string
 import numpy as np
 import skimage.io as skio
 from skimage.transform import resize
@@ -19,6 +21,7 @@ def show_instructions_dialog():
     """Shows an instruction dialog with annotation guidelines."""
     instructions = """
     Annotation Instructions:
+    0. Please add your name in command line like '-u "kejiyuan"'.
     1. Use the paint polygon tool (polygon icon) in the left toolbar to draw contours on the "Contour Annotation" layer
     2. After drawing contours on the current image, click "Save Current Annotation" button on the right panel
     3. Click "Next Image" button to load a new image
@@ -26,6 +29,7 @@ def show_instructions_dialog():
     5. Click "View Current Annotation" to check if your annotations are being captured
 
     Note: 
+    - The default size of tile is 3000
     - The annotation layer uses a bright magenta color for better visibility
     - The prediction layer (if available) is shown in cyan
     - You must click "Save Current Annotation" button after drawing to save your work
@@ -44,17 +48,21 @@ def parse_args():
     parser.add_argument("-o", "--output", type=str, required=True, help="Output directory to save files.")
     parser.add_argument("-p", "--prediction", type=str, help='Path to the prediction result image')
     parser.add_argument("-m", "--mask", type=str, help="Path to the contour mask file (optional).")
-    parser.add_argument("-s", "--size", type=int, default=6000, help="Size of the tile (default: 6000).")
+    parser.add_argument("-s", "--size", type=int, default=3000, help="Size of the tile (default: 3000).")
+    parser.add_argument("-u", "--username", required=True, type=str, help="The user who use napari")
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    
+    characters = string.ascii_letters + string.digits
+    random_str = ''.join(random.choice(characters) for _ in range(10))
+    print(random_str)
+    output_folder = args.output + "_" + random_str + "_" + args.username
     # Ensure output directory exists
-    os.makedirs(args.output, exist_ok=True)
+    os.makedirs(output_folder, exist_ok=True)
 
     # Initialize AnnotationManager
-    annotation_manager_instance = annotation_manager.AnnotationManager(args.output)
+    annotation_manager_instance = annotation_manager.AnnotationManager(output_folder)
 
     # Load image, mask and prediction
     if args.prediction and os.path.exists(args.prediction):

@@ -18,7 +18,7 @@ def setup_napari_viewer(tile, prediction_tile=None):
 
     # Separate channels and add them as individual image layers
     num_channels = tile.shape[2]
-    colormaps = ['red', 'blue', 'green', 'yellow', 'gray']
+    colormaps = ['blue', 'red', 'green']
     for i in range(num_channels):
         channel = tile[:, :, i]
         layer = viewer.add_image(channel, name=f"Channel {i+1}", colormap=colormaps[i])
